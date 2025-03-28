@@ -1,0 +1,138 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    docker-compose.yml                                 :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: jmakkone <jmakkone@student.hive.fi>        +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2025/03/14 00:46:36 by jmakkone          #+#    #+#              #
+#    Updated: 2025/03/27 15:31:48 by jmakkone         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+services:
+  nginx:
+    container_name: nginx
+    build: ./requirements/nginx
+    depends_on:
+      - adminer
+      - redis
+    env_file:
+      - .env
+    networks:
+      - network
+    ports:
+      - "443:443"
+    volumes:
+      - wordpress_data:/var/www/html
+    restart: unless-stopped
+
+  mariadb:
+    container_name: mariadb
+    build: ./requirements/mariadb
+    env_file:
+      - .env
+    networks:
+      - network
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    restart: unless-stopped
+
+  wordpress:
+    container_name: wordpress
+    depends_on:
+      - mariadb
+      - redis
+    build:
+      context: ./requirements/wordpress
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    networks:
+      - network
+    volumes:
+      - wordpress_data:/var/www/html
+    restart: unless-stopped
+
+  redis:
+    container_name: redis
+    build: ./requirements/bonus/redis
+    env_file:
+      - .env
+    networks:
+      - network
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  ftp:
+    container_name: ftp
+    build: ./requirements/bonus/ftp
+    env_file:
+      - .env
+    networks:
+      - network
+    ports:
+      - "21:21"
+      - "30000-30009:30000-30009"
+    volumes:
+      - wordpress_data:/var/www/html
+    restart: unless-stopped
+
+  adminer:
+    container_name: adminer
+    build: ./requirements/bonus/adminer
+    depends_on:
+      - mariadb
+    networks:
+      - network
+    restart: unless-stopped
+ 
+  static_page:
+    container_name: static_page
+    build: ./requirements/bonus/static_page
+    env_file:
+      - .env
+    networks:
+      - network
+    restart: unless-stopped
+  
+  searxng:
+    container_name: searxng
+    build: ./requirements/bonus/searxng
+    env_file:
+      - .env
+    networks:
+      - network
+    restart: unless-stopped
+
+  redis_searxng:
+    container_name: redis_searxng
+    build: ./requirements/bonus/redis_searxng
+    networks:
+      - network
+    volumes:
+      - redis_searxng_data:/data
+    restart: unless-stopped
+
+volumes:
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${HOME}/data/mysql
+      o: bind
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${HOME}/data/wordpress
+      o: bind
+  redis_data:
+    driver: local
+  redis_searxng_data:
+    driver: local
+
+networks:
+  network:
+    driver: bridge
